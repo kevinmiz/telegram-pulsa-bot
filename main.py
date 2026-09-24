@@ -1,9 +1,13 @@
 import os
 
 from dotenv import load_dotenv
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
-
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+)
 
 # Membaca isi file .env
 load_dotenv()
@@ -19,13 +23,63 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def produk(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    
+    keyboard = [
+        [
+            InlineKeyboardButton("Telkomsel", callback_data="telkomsel"),
+            InlineKeyboardButton("Indosat", callback_data="indosat"),
+        ],
+        [
+            InlineKeyboardButton("XL", callback_data="xl"),
+            InlineKeyboardButton("Tri", callback_data="tri"),
+        ],
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
     await update.message.reply_text(
-        "📱 Daftar Operator\n\n"
-        "1. Telkomsel\n"
-        "2. Indosat\n"
-        "3. XL\n"
-        "4. Tri\n\n"
-        "Silakan pilih operator."
+        "📱 Pilih Operator",
+        reply_markup=reply_markup
+    )
+
+async def pilih_operator(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+
+    await query.answer()
+
+    operator = query.data
+
+    keyboard = [
+        [
+            InlineKeyboardButton("Rp5.000", callback_data=f"nominal_5000_{operator}"),
+            InlineKeyboardButton("Rp10.000", callback_data=f"nominal_10000_{operator}"),
+        ],
+        [
+            InlineKeyboardButton("Rp20.000", callback_data=f"nominal_20000_{operator}"),
+            InlineKeyboardButton("Rp50.000", callback_data=f"nominal_50000_{operator}"),
+        ],
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        f"📱 Operator: {operator.title()}\n\n"
+        "Pilih nominal pulsa:",
+        reply_markup=reply_markup
+    )
+
+async def pilih_nominal(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+
+    await query.answer()
+
+    data = query.data
+
+    _, nominal, operator = data.split("_")
+
+    await query.edit_message_text(
+        f"📱 Operator: {operator.title()}\n"
+        f"💰 Nominal: Rp{int(nominal):,}".replace(",", ".")
     )
 
 def main():
@@ -42,6 +96,20 @@ def main():
 
     application.add_handler(
         CommandHandler("produk", produk)
+    )
+
+    application.add_handler(
+        CallbackQueryHandler(
+            pilih_operator,
+            pattern="^(telkomsel|indosat|xl|tri)$"
+        )
+    )
+
+    application.add_handler(
+       CallbackQueryHandler(
+           pilih_nominal,
+           pattern="^nominal_"
+       )
     )
 
     print("Telegram Pulsa Bot sedang berjalan...")
